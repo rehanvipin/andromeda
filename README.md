@@ -1,5 +1,6 @@
 # andromeda
 ### Simulating small populations during an epidemic and monitoring SIR
+![Python application](https://github.com/rehanvipin/andromeda/workflows/Python%20application/badge.svg)
 
 A simulation model in python, inspired by the 3blue1brown video: [Simulating an epidemic](https://www.youtube.com/watch?v=gxAaO2rsdIs&t=1s)  
 
