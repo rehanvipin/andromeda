@@ -1,38 +1,64 @@
 import random
 
+import simpy
 
 class Person:
-    """ A person in our simulation model, these objects live the box models. 
+    """ A person in our simulation model, these objects live the box models.
         They need these properties:
         1. Which box they belong to, given at init (Not needed?)
+            1.1 Also a unique ID to identify them (probably not needed, but useful for debugging)
         2. Location within the box, also given at init
-        3. Infected state , false at init
+        3. Infected state, false at init
         4. Time since infection. (Needs to be handled by simpy)
+        5. Boundaries of the box they are in (given at init)
     """
 
-    def __init__(self, start_pos):
+    def __init__(self, person_id, start_pos, boundaries, env: simpy.Environment):
+        self.id_ = person_id
         self.position = start_pos
         self.infected = False
         self.time_infected = -1     # Invalid means not infected
         self.walk_range = 3
-    
-    def wander(self, boundaries):
+        self.walk_duration = 10 # max duration (in terms of simpy env steps) to walk for
+        self.stop_duration = 10 # same as above, but for being in one place
+        self.env = env # simpy environment
+        self.boundaries = boundaries
+        # self.process = env.process(self.activate())
+
+    def activate(self):
+        """Activates an infinite loop of walking and stopping
+        """
+        while True:
+            yield self.env.process(self.wander())
+            print("Person {} is at position {} at time {}".format(self.id_,
+                                                                  self.position,
+                                                                  self.env.now))
+            yield self.env.timeout(random.randrange(self.stop_duration))
+
+    def wander(self):
         """ The random walk the particle will be doing till the end of the simulation.
             This doesn't have to be a class method, but will be convenient.
             The particle will wander in the boundaries.
             Need to define per call shift range. i.e how much movement per step
+
+            Times out for some time before actually updating the position.
+            It would be better if it moved one position per time step, instead
+            of teleporting to the location.
         """
-        (start_x, end_x), (start_y, end_y) = boundaries
+        (start_x, end_x), (start_y, end_y) = self.boundaries
         cur_x, cur_y = self.position
-        new_x = random.randrange(0,self.walk_range) + cur_x
-        new_y = random.randrange(0,self.walk_range) + cur_y
+        new_x = random.randrange(0, self.walk_range) + cur_x
+        new_y = random.randrange(0, self.walk_range) + cur_y
         # Try to move within the correct boundaries
-        while not (start_x <= new_x <= end) and not (start_y <= new_y <= end_y):
-            new_x = random.randrange(0,self.walk_range) + cur_x
-            new_y = random.randrange(0,self.walk_range) + cur_y
+        while not (start_x <= new_x <= end_x) or not (start_y <= new_y <= end_y):
+            new_x = random.randrange(-self.walk_range, self.walk_range+1) + cur_x
+            new_y = random.randrange(-self.walk_range, self.walk_range+1) + cur_y
+
+        # TODO: the walk duration should ideally be calculated from the distance travelled
+        yield self.env.timeout(random.randrange(self.walk_duration))
         self.position = new_x, new_y
 
-        # This is not the final function ofc, need to also consider the factor of other 
+        # This is not the final function ofc, need to also consider the factor of other
         # points being in the way, and physical distancing.
 
 
@@ -47,22 +73,20 @@ class Community:
         3. Lockdown?
     """
 
-    def __init__(self, position, no_of_people=60):
-        self.position = position
+    def __init__(self, position, env: simpy.Environment, no_of_people=60):
+        self.position = position  # defines boundaries of the community
+        self.env = env  # SimPy environment
         self.popultaion = []
         (start_x, end_x), (start_y, end_y) = position
-        for _ in range(no_of_people):
+        for person_id in range(no_of_people):
             start_pos = (random.randrange(start_x, end_x), random.randrange(start_y, end_y))
-            self.popultaion.append(Person(start_pos))
-    
-    def activate(self, iterations):
-        """ Activate the community for this much time, i.e. the particles are active 
-            in this time period and move around randomly. Maybe this should be infinite,
-            maybe this should be parallelized with threads, thoughts for a later day.
+            self.popultaion.append(Person(person_id, start_pos, position, env))
+        self.popultaion_processes = []  # to store the SimPy processes for each person
+        # ^ this could be dict
+
+    def activate(self):
+        """Activates all the people in this community. This will not lock the thread.
         """
-        boundaries = self.position
-        for time_count in iterations:
-            for person in self.position:
-                person.wander(boundaries)
-                # Render
-        
+        for person in self.popultaion:
+            self.popultaion_processes.append(self.env.process(person.activate()))
+        return self.popultaion_processes
