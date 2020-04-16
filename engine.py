@@ -2,6 +2,8 @@ import simpy
 
 import world
 
+import render
+
 
 def main():
     # Entire simulation process, must make all the data here available to the gui
@@ -13,11 +15,14 @@ def main():
     sample_community = world.Community(boundaries, env, no_of_people=10)
     sample_community.activate()
 
-    # initially used env.step to run the environment, but that had a weird side effect
-    # of not actually updating the environment time (env.now)
-    for step in range(100):
-        print("Step {}".format(step))
-        env.run(until=env.now+1) # proceed by one time step
+    def before(env):
+        env.run(until=env.now+1)
+
+    render.render_community(-1, # number of steps
+                            env,
+                            sample_community,
+                            before_callback=before,
+                            before_kwargs={"env": env})
 
 if __name__ == "__main__":
     main()

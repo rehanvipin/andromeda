@@ -18,7 +18,7 @@ class Person:
         self.position = start_pos
         self.infected = False
         self.time_infected = -1     # Invalid means not infected
-        self.walk_range = 3
+        self.walk_range = 5
         self.walk_duration = 10 # max duration (in terms of simpy env steps) to walk for
         self.stop_duration = 10 # same as above, but for being in one place
         self.env = env # simpy environment
@@ -54,9 +54,19 @@ class Person:
             new_x = random.randrange(-self.walk_range, self.walk_range+1) + cur_x
             new_y = random.randrange(-self.walk_range, self.walk_range+1) + cur_y
 
-        # TODO: the walk duration should ideally be calculated from the distance travelled
-        yield self.env.timeout(random.randrange(self.walk_duration))
-        self.position = new_x, new_y
+        def get_direction(position, target):
+            if position < target:
+                return 1
+            if position > target:
+                return -1
+            return 0
+
+        while cur_x != new_x or cur_y != new_y:
+            direction = (get_direction(cur_x, new_x), get_direction(cur_y, new_y))
+            cur_x += direction[0]
+            cur_y += direction[1]
+            self.position = cur_x, cur_y
+            yield self.env.timeout(1)
 
         # This is not the final function ofc, need to also consider the factor of other
         # points being in the way, and physical distancing.
@@ -76,17 +86,33 @@ class Community:
     def __init__(self, position, env: simpy.Environment, no_of_people=60):
         self.position = position  # defines boundaries of the community
         self.env = env  # SimPy environment
-        self.popultaion = []
+        self.population = []
         (start_x, end_x), (start_y, end_y) = position
         for person_id in range(no_of_people):
             start_pos = (random.randrange(start_x, end_x), random.randrange(start_y, end_y))
-            self.popultaion.append(Person(person_id, start_pos, position, env))
-        self.popultaion_processes = []  # to store the SimPy processes for each person
+            self.population.append(Person(person_id, start_pos, position, env))
+        self.population_processes = []  # to store the SimPy processes for each person
         # ^ this could be dict
+
+    def get_all_positions_x_y(self):
+        """Get positions of all people in the form of two separate x and y lists.
+        This is a helper function for plotting.
+        """
+        x = []
+        y = []
+        for person in self.population:
+            x.append(person.position[0])
+            y.append(person.position[1])
+        return x, y
+
+    def set_people_attribute(self, attr_name, value):
+        """Sets an attribute for all people in the population"""
+        for person in self.population:
+            setattr(person, attr_name, value)
 
     def activate(self):
         """Activates all the people in this community. This will not lock the thread.
         """
-        for person in self.popultaion:
-            self.popultaion_processes.append(self.env.process(person.activate()))
-        return self.popultaion_processes
+        for person in self.population:
+            self.population_processes.append(self.env.process(person.activate()))
+        return self.population_processes
