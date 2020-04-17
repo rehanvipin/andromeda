@@ -2,6 +2,13 @@ import random
 
 import simpy
 
+def random_tf(probability):
+    """Returns True probability% of times (has been tested)
+    """
+    if random.random() < probability:
+        return True
+    return False
+
 class Person:
     """ A person in our simulation model, these objects live the box models.
         They need these properties:
@@ -11,9 +18,10 @@ class Person:
         3. Infected state, false at init
         4. Time since infection. (Needs to be handled by simpy)
         5. Boundaries of the box they are in (given at init)
+        6. List of popular places in the community with the probability of going to such places
     """
 
-    def __init__(self, person_id, start_pos, boundaries, env: simpy.Environment):
+    def __init__(self, person_id, start_pos, boundaries, env: simpy.Environment, popular_places):
         self.id_ = person_id
         self.position = start_pos
         self.infected = False
@@ -24,6 +32,8 @@ class Person:
         self.env = env # simpy environment
         self.boundaries = boundaries
         # self.process = env.process(self.activate())
+        self.popular_places = popular_places
+        self.popular_place_probability = 0.8
 
     def activate(self):
         """Activates an infinite loop of walking and stopping
@@ -47,12 +57,16 @@ class Person:
         """
         (start_x, end_x), (start_y, end_y) = self.boundaries
         cur_x, cur_y = self.position
-        new_x = random.randrange(0, self.walk_range) + cur_x
-        new_y = random.randrange(0, self.walk_range) + cur_y
-        # Try to move within the correct boundaries
-        while not (start_x <= new_x <= end_x) or not (start_y <= new_y <= end_y):
-            new_x = random.randrange(-self.walk_range, self.walk_range+1) + cur_x
-            new_y = random.randrange(-self.walk_range, self.walk_range+1) + cur_y
+
+        if self.popular_places and random_tf(self.popular_place_probability):
+            new_x, new_y = random.choice(self.popular_places)
+        else:
+            new_x = random.randrange(0, self.walk_range) + cur_x
+            new_y = random.randrange(0, self.walk_range) + cur_y
+            # Try to move within the correct boundaries
+            while not start_x <= new_x <= end_x or not start_y <= new_y <= end_y:
+                new_x = random.randrange(-self.walk_range, self.walk_range+1) + cur_x
+                new_y = random.randrange(-self.walk_range, self.walk_range+1) + cur_y
 
         def get_direction(position, target):
             if position < target:
@@ -71,7 +85,6 @@ class Person:
         # This is not the final function ofc, need to also consider the factor of other
         # points being in the way, and physical distancing.
 
-
 class Community:
     """ A community in our model world, they are represented by boxes.
         There are also isolation communities. They are rendered on the 'Canvas'
@@ -83,16 +96,24 @@ class Community:
         3. Lockdown?
     """
 
-    def __init__(self, position, env: simpy.Environment, no_of_people=60):
+    def __init__(self, position, env: simpy.Environment, no_of_people=60, popular_places=None):
         self.position = position  # defines boundaries of the community
         self.env = env  # SimPy environment
         self.population = []
         (start_x, end_x), (start_y, end_y) = position
+
+        # this will be a list of popular places in the community which
+        # most of the residents will frequently visit
+        if not popular_places:
+            popular_places = []
+        self.popular_places = popular_places
+
         for person_id in range(no_of_people):
             start_pos = (random.randrange(start_x, end_x), random.randrange(start_y, end_y))
-            self.population.append(Person(person_id, start_pos, position, env))
+            self.population.append(Person(person_id, start_pos, position, env, popular_places))
         self.population_processes = []  # to store the SimPy processes for each person
         # ^ this could be dict
+
 
     def get_all_positions_x_y(self):
         """Get positions of all people in the form of two separate x and y lists.

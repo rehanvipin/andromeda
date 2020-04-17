@@ -1,18 +1,28 @@
+import random
 import simpy
 
 import world
-
 import render
 
 
 def main():
-    # Entire simulation process, must make all the data here available to the gui
+    """Entire simulation process, must make all the data here available to the gui
+    """
     env = simpy.Environment()
 
     # simulating one (small) sample community for now
-    boundaries = ((0, 10), (0, 10))  # boundaries for the sample community
+    boundaries = ((0, 100), (0, 100))  # boundaries for the sample community
 
-    sample_community = world.Community(boundaries, env, no_of_people=10)
+    num_popular_places = 4
+    popular_places = []
+    for _ in range(num_popular_places):
+        popular_places.append((random.randrange(boundaries[0][0], boundaries[0][1]),
+                               random.randrange(boundaries[1][0], boundaries[1][1])))
+
+    sample_community = world.Community(boundaries,
+                                       env,
+                                       no_of_people=20,
+                                       popular_places=popular_places)
     sample_community.activate()
 
     def before(env):

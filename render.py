@@ -2,6 +2,7 @@
     Uses the values from the engine to describe the world.
     Still need to decide on the modules to be used.
 """
+import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.widgets import Slider, CheckButtons
@@ -53,20 +54,28 @@ def render_community(steps, env,
     axcolor = 'lightgoldenrodyellow'
     ax_slider_1 = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
     ax_slider_2 = plt.axes([0.25, 0.15, 0.65, 0.03], facecolor=axcolor)
-    ax_left_1 = plt.axes([0.025, 0.5, 0.15, 0.05], facecolor=axcolor)
+    ax_slider_3 = plt.axes([0.25, 0.2, 0.65, 0.03], facecolor=axcolor)
+    ax_left_1 = plt.axes([0.025, 0.5, 0.15, 0.10], facecolor=axcolor)
 
+    max_walk_range = round(math.sqrt((community.position[0][1]-community.position[0][0])**2
+                                     + (community.position[1][1]-community.position[1][0])**2))
+    print(max_walk_range)
     # slider to control walk_range
-    walk_range_slider = Slider(ax_slider_1, "Walk Range", 1, 20, valinit=5, valstep=1)
+    walk_range_slider = Slider(ax_slider_1, "Walk Range", 1, max_walk_range, valinit=5, valstep=1)
     # slider to control stop_duration
-    stop_duration_slider = Slider(ax_slider_2, "Stop Duration", 1, 50, valinit=10, valstep=1)
+    stop_duration_slider = Slider(ax_slider_2, "Stop Duration", 1, 200, valinit=10, valstep=1)
+    # slider to control probability of going to a popular place
+    pop_place_slider = Slider(ax_slider_3, "Prob of going to popular place", 0, 1, valinit=0.8)
 
     # common function to upload all sliders
     def update_sliders(_):
         community.set_people_attribute("walk_range", walk_range_slider.val)
         community.set_people_attribute("stop_duration", stop_duration_slider.val)
+        community.set_people_attribute("popular_place_probability", pop_place_slider.val)
     # attach sliders to update function
     walk_range_slider.on_changed(update_sliders)
     stop_duration_slider.on_changed(update_sliders)
+    pop_place_slider.on_changed(update_sliders)
 
     num_people = len(community.population)
 
@@ -75,6 +84,13 @@ def render_community(steps, env,
     c = np.random.random((num_people)) # intialize random colors
     scat = ax.scatter(x, y, c=c, vmin=0, vmax=1,
                       cmap="jet", edgecolor="k")
+    # plot popular places
+    pop_places_x = [pos[0] for pos in community.popular_places]
+    pop_places_y = [pos[1] for pos in community.popular_places]
+    pop_scat = ax.scatter(pop_places_x,
+                          pop_places_y,
+                          marker="s",
+                          alpha=0.5)
 
     # utility function to update key-value args with local variables
     def change_kwargs(orig_kwargs, **kwargs):
