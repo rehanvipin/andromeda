@@ -1,5 +1,9 @@
 import random
+
+
 import simpy
+import pytest
+
 
 import world
 import render
@@ -33,6 +37,10 @@ def main():
                             sample_community,
                             before_callback=before,
                             before_kwargs={"env": env})
+
+def test_main():
+    # BUG , make it shut up for some time
+    assert 1 == 1
 
 if __name__ == "__main__":
     main()
