@@ -12,9 +12,7 @@ pluggy==0.13.1
 py==1.8.1
 Pygments==2.6.1
 pyparsing==2.4.7
-pypiwin32==223
 pytest==5.4.1
-pywin32==227
 requests==2.23.0
 six==1.14.0
 urllib3==1.25.9
