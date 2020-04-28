@@ -2,7 +2,6 @@ import random
 
 
 import simpy
-import pytest
 
 
 import world
@@ -38,9 +37,9 @@ def main():
                             before_callback=before,
                             before_kwargs={"env": env})
 
-def test_main():
-    # BUG , make it shut up for some time
-    assert 1 == 1
+# def test_main():
+#     # BUG , make it shut up for some time
+#     assert 1 == 1
 
 if __name__ == "__main__":
     main()
