@@ -1,0 +1,26 @@
+#:kivy 1.11.1
+
+<Fellow>:
+    size: 50, 50
+    canvas:
+        Color:
+            rgb: self.colz
+        Ellipse:
+            pos: self.pos
+            size: self.size
+
+<LocalBar>:
+    # canvas:
+    #     Rectangle:
+    #         pos: 0, 0
+    #         size: self.width, self.height
+        
+    Label:
+        id: drunk_people
+        font_size: 40
+        center_x: root.width/5
+        top: root.top - 20
+        text: "The Bar: "+root.cases
+    # Fellow:
+    #     id: patron
+    #     center: self.parent.center

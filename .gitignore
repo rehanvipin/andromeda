@@ -9,6 +9,7 @@ __pycache__/
 # Virtual enviroments and editor configs
 matrix/
 .vscode/
+artificial/
 
 # Distribution / packaging
 .Python
@@ -138,3 +139,6 @@ dmypy.json
 # ctags
 tags
 
+# temporary files and other fancy stuff
+gooey/epic.png
+gooey/pong-game/

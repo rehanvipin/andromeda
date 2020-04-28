@@ -1,0 +1,23 @@
+#:kivy 1.4.1
+
+<Ball>:
+    size: 25, 25
+    canvas:
+        Color:
+            rgb: 1, 0, 1
+        Ellipse:
+            pos: self.pos
+            size: self.size
+
+<BallsContainer>:
+    canvas:
+        Color:
+            rgb: 1, 1, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    Label:
+        color: 0, 0, 0, 1
+        top: root.top
+        font_size: 36
+        text: str(len(root.children) - 1)
