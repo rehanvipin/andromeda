@@ -35,7 +35,8 @@ def main():
                             env,
                             sample_community,
                             before_callback=before,
-                            before_kwargs={"env": env})
+                            before_kwargs={"env": env},
+                            interval=10)
 
 # def test_main():
 #     # BUG , make it shut up for some time

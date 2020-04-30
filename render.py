@@ -59,13 +59,14 @@ def render_community(steps, env,
 
     max_walk_range = round(math.sqrt((community.position[0][1]-community.position[0][0])**2
                                      + (community.position[1][1]-community.position[1][0])**2))
+    initial_walk_range = max_walk_range / 5
     print(max_walk_range)
     # slider to control walk_range
-    walk_range_slider = Slider(ax_slider_1, "Walk Range", 1, max_walk_range, valinit=5, valstep=1)
+    walk_range_slider = Slider(ax_slider_1, "Walk Range", 1, max_walk_range, valinit=initial_walk_range, valstep=1)
     # slider to control stop_duration
     stop_duration_slider = Slider(ax_slider_2, "Stop Duration", 1, 200, valinit=10, valstep=1)
     # slider to control probability of going to a popular place
-    pop_place_slider = Slider(ax_slider_3, "Prob of going to popular place", 0, 1, valinit=0.8)
+    pop_place_slider = Slider(ax_slider_3, "Prob of going to popular place", 0, 1, valinit=0.3)
 
     # common function to upload all sliders
     def update_sliders(_):
