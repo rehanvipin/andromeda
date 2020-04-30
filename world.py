@@ -2,6 +2,8 @@ import random
 
 import simpy
 
+CLOSE_ENOUGH_THRESHOLD = 0.5
+
 def random_tf(probability):
     """Returns True probability% of times (has been tested)
     """
@@ -33,7 +35,7 @@ class Person:
         self.boundaries = boundaries
         # self.process = env.process(self.activate())
         self.popular_places = popular_places
-        self.popular_place_probability = 0.8
+        self.popular_place_probability = 0.3
 
     def activate(self):
         """Activates an infinite loop of walking and stopping
@@ -61,24 +63,29 @@ class Person:
         if self.popular_places and random_tf(self.popular_place_probability):
             new_x, new_y = random.choice(self.popular_places)
         else:
-            new_x = random.randrange(0, self.walk_range) + cur_x
-            new_y = random.randrange(0, self.walk_range) + cur_y
+            new_x = random.uniform(0, self.walk_range) + cur_x
+            new_y = random.uniform(0, self.walk_range) + cur_y
             # Try to move within the correct boundaries
             while not start_x <= new_x <= end_x or not start_y <= new_y <= end_y:
-                new_x = random.randrange(-self.walk_range, self.walk_range+1) + cur_x
-                new_y = random.randrange(-self.walk_range, self.walk_range+1) + cur_y
+                new_x = random.uniform(-self.walk_range, self.walk_range+1) + cur_x
+                new_y = random.uniform(-self.walk_range, self.walk_range+1) + cur_y
 
         def get_direction(position, target):
-            if position < target:
-                return 1
-            if position > target:
-                return -1
+            if not close_enough(position, target):
+                if position < target:
+                    return 1
+                if position > target:
+                    return -1
             return 0
 
-        while cur_x != new_x or cur_y != new_y:
+        def close_enough(current_value, target_value):
+            if abs(current_value - target_value) < CLOSE_ENOUGH_THRESHOLD:
+                return True
+
+        while not close_enough(cur_x, new_x) or not close_enough(cur_y, new_y):
             direction = (get_direction(cur_x, new_x), get_direction(cur_y, new_y))
-            cur_x += direction[0]
-            cur_y += direction[1]
+            cur_x += direction[0] * random.random()
+            cur_y += direction[1] * random.random()
             self.position = cur_x, cur_y
             yield self.env.timeout(1)
 
@@ -109,7 +116,7 @@ class Community:
         self.popular_places = popular_places
 
         for person_id in range(no_of_people):
-            start_pos = (random.randrange(start_x, end_x), random.randrange(start_y, end_y))
+            start_pos = (random.uniform(start_x, end_x), random.uniform(start_y, end_y))
             self.population.append(Person(person_id, start_pos, position, env, popular_places))
         self.population_processes = []  # to store the SimPy processes for each person
         # ^ this could be dict
