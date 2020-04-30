@@ -59,8 +59,8 @@ def render_community(steps, env,
 
     max_walk_range = round(math.sqrt((community.position[0][1]-community.position[0][0])**2
                                      + (community.position[1][1]-community.position[1][0])**2))
-    initial_walk_range = max_walk_range / 5
-    print(max_walk_range)
+    initial_walk_range = max_walk_range / 2
+    community.set_people_attribute("walk_range", initial_walk_range)
     # slider to control walk_range
     walk_range_slider = Slider(ax_slider_1, "Walk Range", 1, max_walk_range, valinit=initial_walk_range, valstep=1)
     # slider to control stop_duration

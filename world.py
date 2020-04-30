@@ -3,6 +3,7 @@ import random
 import simpy
 
 CLOSE_ENOUGH_THRESHOLD = 0.5
+WALK_SPEED = 0.5
 
 def random_tf(probability):
     """Returns True probability% of times (has been tested)
@@ -33,7 +34,6 @@ class Person:
         self.stop_duration = 10 # same as above, but for being in one place
         self.env = env # simpy environment
         self.boundaries = boundaries
-        # self.process = env.process(self.activate())
         self.popular_places = popular_places
         self.popular_place_probability = 0.3
 
@@ -42,9 +42,6 @@ class Person:
         """
         while True:
             yield self.env.process(self.wander())
-            print("Person {} is at position {} at time {}".format(self.id_,
-                                                                  self.position,
-                                                                  self.env.now))
             yield self.env.timeout(random.randrange(self.stop_duration))
 
     def wander(self):
@@ -84,8 +81,8 @@ class Person:
 
         while not close_enough(cur_x, new_x) or not close_enough(cur_y, new_y):
             direction = (get_direction(cur_x, new_x), get_direction(cur_y, new_y))
-            cur_x += direction[0] * random.random()
-            cur_y += direction[1] * random.random()
+            cur_x += direction[0] * WALK_SPEED
+            cur_y += direction[1] * WALK_SPEED
             self.position = cur_x, cur_y
             yield self.env.timeout(1)
 
