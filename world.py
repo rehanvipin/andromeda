@@ -33,12 +33,12 @@ class Person:
         self.infected = False
         self.time_infected = -1     # Invalid means not infected
         self.infect_range = 2
-        self.infect_probability = 0.05
+        self.infect_probability = 0.01
         self.num_infected = 0
         self.walk_range = 5
         self.walk_speed = random.random() * WALK_SPEED
         self.walk_duration = 10 # max duration (in terms of simpy env steps) to walk for
-        self.stop_duration = 10 # same as above, but for being in one place
+        self.stop_duration = 25 # same as above, but for being in one place
         self.env = env # simpy environment
         self.boundaries = boundaries
         self.popular_places = popular_places

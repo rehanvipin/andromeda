@@ -45,11 +45,20 @@ def render_community(steps, env,
         steps = None
 
     # make subplots, only 1 subplot since this function only simulates one community
-    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+    fig, ax = plt.subplots(1, 2, figsize=(16, 9))
     plt.subplots_adjust(left=0.25, bottom=0.25)
-    ax.set_aspect('equal')
-    ax.set_xlim(community.position[0][0]-2, community.position[0][1]+2)
-    ax.set_ylim(community.position[1][0]-2, community.position[1][1]+2)
+    ax[0].set_aspect('equal')
+    ax[0].set_xlim(community.position[0][0]-2, community.position[0][1]+2)
+    ax[0].set_ylim(community.position[1][0]-2, community.position[1][1]+2)
+
+    ax[1].set_aspect(10)
+    ax[1].set_ylim(0, 101)
+    ax[1].set_xlim(0, 1000)
+    ax[1].set_xlabel("Time")
+    ax[1].set_ylabel("Percent of infected")
+    timesteps = []
+    infected_percentages = []
+    infected_percent_plot, = ax[1].plot([], [])
 
     # make axes for sliders and buttons
     axcolor = 'lightgoldenrodyellow'
@@ -62,7 +71,7 @@ def render_community(steps, env,
 
 
     # For displaying R value
-    ax_left_2 = plt.axes([0.05, 0.8, 0.2, 0.05])
+    ax_left_2 = plt.axes([0.01, 0.8, 0.2, 0.05])
     ax_left_2.get_xaxis().set_visible(False)
     ax_left_2.get_yaxis().set_visible(False)
     ax_left_2_bbox = ax_left_2.get_position(original=False).get_points()
@@ -74,7 +83,7 @@ def render_community(steps, env,
                             verticalalignment='center')
 
     # For displaying infected percentage
-    ax_left_3 = plt.axes([0.05, 0.9, 0.2, 0.05])
+    ax_left_3 = plt.axes([0.01, 0.9, 0.2, 0.05])
     ax_left_3.get_xaxis().set_visible(False)
     ax_left_3.get_yaxis().set_visible(False)
     ax_left_3_bbox = ax_left_3.get_position(original=False).get_points()
@@ -94,13 +103,13 @@ def render_community(steps, env,
                                valinit=initial_walk_range,
                                valstep=1)
     # slider to control stop_duration
-    stop_duration_slider = Slider(ax_slider_2, "Stop Duration", 1, 200, valinit=10, valstep=1)
+    stop_duration_slider = Slider(ax_slider_2, "Stop Duration", 1, 1000, valinit=25, valstep=1)
     # slider to control probability of going to a popular place
     pop_place_slider = Slider(ax_slider_3, "Prob of going to popular place", 0, 1, valinit=0.3)
     # slider to control infect range
     infect_range_slider = Slider(ax_slider_4, "Infect range", 0, max_walk_range/2, valinit=2, valstep=0.5)
     # slider to control infect probability
-    infect_prob_slider = Slider(ax_slider_5, "Infect prob", 0, 1, valinit=0.05, valstep=0.05)
+    infect_prob_slider = Slider(ax_slider_5, "Infect prob", 0, 0.5, valinit=0.01, valstep=0.001)
 
     # common function to upload all sliders
     def update_sliders(_):
@@ -126,15 +135,15 @@ def render_community(steps, env,
     x = data[:, 0]
     y = data[:, 1]
     c = data[:, 2] # intialize color to green
-    scat = ax.scatter(x, y, c=c, vmin=0, vmax=1,
-                      cmap="jet", edgecolor="k")
+    scat = ax[0].scatter(x, y, c=c, vmin=0, vmax=1,
+                         cmap="jet", edgecolor="k")
     # plot popular places
     pop_places_x = [pos[0] for pos in community.popular_places]
     pop_places_y = [pos[1] for pos in community.popular_places]
-    pop_scat = ax.scatter(pop_places_x,
-                          pop_places_y,
-                          marker="s",
-                          alpha=0.5)
+    pop_scat = ax[0].scatter(pop_places_x,
+                             pop_places_y,
+                             marker="s",
+                             alpha=0.5)
 
     # utility function to update key-value args with local variables
     def change_kwargs(orig_kwargs, **kwargs):
@@ -142,7 +151,7 @@ def render_community(steps, env,
 
     frame_count = 0
     total_frametime = 0
-    def update(_):
+    def update(frame):
         """Update the scatter plot."""
         nonlocal total_frametime, frame_count, data
 
@@ -152,7 +161,9 @@ def render_community(steps, env,
         if before_callback:
             before_callback(*before_args, **before_kwargs)
 
-        data, r_value, infected_percent = community.get_all_positions_colors(normal_color, infected_color, nparray_to_fill=data)
+        data, r_value, infected_percent = community.get_all_positions_colors(normal_color,
+                                                                             infected_color,
+                                                                             nparray_to_fill=data)
 
         # Set x and y data (input in the form of a 2D np array)
         scat.set_offsets(data[:, 0:2])
@@ -174,6 +185,15 @@ def render_community(steps, env,
         frametime = round(total_time*1000000, 2)
         total_frametime += frametime
         frame_count += 1
+
+        if frame_count % 10 == 0:
+            infected_percentages.append(infected_percent)
+            timesteps.append(frame)
+            xlim_min, xlim_max = ax[1].get_xlim()
+            if frame > xlim_max:
+                ax[1].set_xlim(xlim_min, xlim_max + 500)
+            infected_percent_plot.set_data(timesteps, infected_percentages)
+
         if frame_count == 100:
             print("Average compute time in last {} frames: {:8.2f} microseconds".format(
                 frame_count,
@@ -183,7 +203,7 @@ def render_community(steps, env,
 
         # We need to return the updated artist for FuncAnimation to draw..
         # Note that it expects a sequence of artists, thus the trailing comma.
-        return (scat, r_text, infected_percent_text)
+        return (scat, r_text, infected_percent_text, infected_percent_plot)
 
     anim = animation.FuncAnimation(fig, update, interval=interval,
                                    blit=True,
