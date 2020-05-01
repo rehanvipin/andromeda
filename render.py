@@ -44,21 +44,24 @@ def render_community(steps, env,
         infinite = True
         steps = None
 
-    # make subplots, only 1 subplot since this function only simulates one community
+    # make subplots, only 1 subplot (with graph) since this function only simulates one community
     fig, ax = plt.subplots(1, 2, figsize=(16, 9))
+
+    # set limits and aspect ratio for community plot
     plt.subplots_adjust(left=0.25, bottom=0.25)
     ax[0].set_aspect('equal')
     ax[0].set_xlim(community.position[0][0]-2, community.position[0][1]+2)
     ax[0].set_ylim(community.position[1][0]-2, community.position[1][1]+2)
 
+    # set limits, labels and aspect ratio for infected percent plot
     ax[1].set_aspect(10)
     ax[1].set_ylim(0, 101)
     ax[1].set_xlim(0, 1000)
     ax[1].set_xlabel("Time")
     ax[1].set_ylabel("Percent of infected")
-    timesteps = []
-    infected_percentages = []
-    infected_percent_plot, = ax[1].plot([], [])
+    timesteps = [] # to store x values of infected percent plot
+    infected_percentages = [] # y values
+    infected_percent_plot, = ax[1].plot([], []) # initial plot
 
     # make axes for sliders and buttons
     axcolor = 'lightgoldenrodyellow'
@@ -129,12 +132,12 @@ def render_community(steps, env,
     num_people = len(community.population)
 
     # initialize the scatter plot
-    normal_color = 0.5
-    infected_color = 1.0
+    normal_color = 0.5 # color of non-infected people (green)
+    infected_color = 0.9 # color of infected people (red)
     data, _, _ = community.get_all_positions_colors(normal_color, infected_color)
     x = data[:, 0]
     y = data[:, 1]
-    c = data[:, 2] # intialize color to green
+    c = data[:, 2] # intialize color
     scat = ax[0].scatter(x, y, c=c, vmin=0, vmax=1,
                          cmap="jet", edgecolor="k")
     # plot popular places
@@ -155,6 +158,7 @@ def render_community(steps, env,
         """Update the scatter plot."""
         nonlocal total_frametime, frame_count, data
 
+        # store time at beginning of frame calc
         begin_time = time.perf_counter()
 
         # call the "before" function
@@ -174,27 +178,37 @@ def render_community(steps, env,
         # Set colors of dots
         scat.set_array(data[:, 2])
 
+        # update R value text
         r_text.set_text("R Value: {:3.2f}".format(r_value))
+        # updated infected percent text
         infected_percent_text.set_text("Percent infected: {:3.2f}%".format(infected_percent))
 
         # call the "after" function
         if after_callback:
             after_callback(*after_args, **after_args)
 
+        if frame % 10 == 0:
+            infected_percentages.append(infected_percent) # updated infected percent list
+            timesteps.append(frame) # updated x values for infected percent plot
+            # check if frame number exceeds x limit
+            xlim_min, xlim_max = ax[1].get_xlim()
+            if frame > xlim_max:
+                # update x limit if it exceeds
+                ax[1].set_xlim(xlim_min, xlim_max + 500)
+            # update infected percent plot
+            infected_percent_plot.set_data(timesteps, infected_percentages)
+
+        # time after major calcs
         total_time = time.perf_counter() - begin_time
+        # convert to microseconds and round off to 2 decimal places
         frametime = round(total_time*1000000, 2)
+        # store total frametime (to calculate compute time)
+        # not exactly the frame time (most of the time is probably spent in drawing)
         total_frametime += frametime
         frame_count += 1
 
-        if frame_count % 10 == 0:
-            infected_percentages.append(infected_percent)
-            timesteps.append(frame)
-            xlim_min, xlim_max = ax[1].get_xlim()
-            if frame > xlim_max:
-                ax[1].set_xlim(xlim_min, xlim_max + 500)
-            infected_percent_plot.set_data(timesteps, infected_percentages)
-
         if frame_count == 100:
+            # log compute time every 100 frames
             print("Average compute time in last {} frames: {:8.2f} microseconds".format(
                 frame_count,
                 total_frametime/frame_count))
@@ -221,7 +235,8 @@ def render_community(steps, env,
         else:
             anim.event_source.start()
             anim_running = True
-        ax.draw_artist(scat)
+        ax[0].draw_artist(scat)
+        ax[1].draw_artist(infected_percent_plot)
 
     # add a button widget to pause
     pause_button = CheckButtons(ax_left_1, ["Pause"])

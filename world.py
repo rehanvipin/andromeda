@@ -31,27 +31,29 @@ class Person:
         self.id_ = person_id
         self.position = start_pos
         self.infected = False
-        self.time_infected = -1     # Invalid means not infected
-        self.infect_range = 2
-        self.infect_probability = 0.01
-        self.num_infected = 0
-        self.walk_range = 5
+        self.time_infected = -1  # Invalid means not infected
+        self.infect_range = 2  # max range in which a person can a infect another
+        self.infect_probability = 0.01  # probability of infecting people in range
+        self.num_infected = 0  # to keep track of number of people this person infected
+        self.walk_range = 5  # max distance a person can go after stopping
+        # randomly initialise walking speed of this person
         self.walk_speed = random.random() * WALK_SPEED
         self.walk_duration = 10 # max duration (in terms of simpy env steps) to walk for
         self.stop_duration = 25 # same as above, but for being in one place
         self.env = env # simpy environment
-        self.boundaries = boundaries
-        self.popular_places = popular_places
-        self.popular_place_probability = 0.3
+        self.boundaries = boundaries  # (x_min, x_max, y_min, y_max)
+        self.popular_places = popular_places  # a list of popular places in the community
+        self.popular_place_probability = 0.3  # probability of going to a popular place
 
     def activate(self, spatialhash):
         """Activates an infinite loop of walking and stopping
         """
         while True:
-            yield self.env.process(self.wander(spatialhash))
-            yield self.env.timeout(random.randrange(self.stop_duration))
+            yield self.env.process(self.wander(spatialhash))  # wander
+            yield self.env.timeout(random.randrange(self.stop_duration))  # stop wandering
 
     def got_infected(self):
+        """Make person infected if not already infected"""
         if self.infected:
             return False
         self.infected = True
@@ -72,8 +74,9 @@ class Person:
         cur_x, cur_y = self.position
 
         if self.popular_places and random_tf(self.popular_place_probability):
-            new_x, new_y = random.choice(self.popular_places)
+            new_x, new_y = random.choice(self.popular_places) # go to one of popular places
         else:
+            # go to random location in community
             new_x = random.uniform(0, self.walk_range) + cur_x
             new_y = random.uniform(0, self.walk_range) + cur_y
             # Try to move within the correct boundaries
@@ -82,6 +85,7 @@ class Person:
                 new_y = random.uniform(-self.walk_range, self.walk_range+1) + cur_y
 
         def get_direction(position, target):
+            """Given current value and target value return direction of increase to reach target"""
             if not close_enough(position, target):
                 if position < target:
                     return 1
@@ -90,26 +94,29 @@ class Person:
             return 0
 
         def close_enough(current_value, target_value):
+            """Returns whether current_value is close enough to target value based on threshold"""
             if abs(current_value - target_value) < CLOSE_ENOUGH_THRESHOLD:
                 return True
             return False
 
+        # move slowly to target (not just teleport to it)
         while not close_enough(cur_x, new_x) or not close_enough(cur_y, new_y):
             direction = (get_direction(cur_x, new_x), get_direction(cur_y, new_y))
+            # increment position
             cur_x += direction[0] * self.walk_speed
             cur_y += direction[1] * self.walk_speed
             if self.infected:
+                # if infected do a spatial search
                 nearby_people = spatialhash.search_nearby(self, self.infect_range)
-                # print("Nearby to {}:".format(self.id_), nearby_people)
                 for nearby_person in nearby_people:
+                    # infect nearby people
                     if random_tf(self.infect_probability):
+                        # infect successful
                         self.num_infected += (nearby_person.got_infected())
+            # update position in spatial hash
             spatialhash.updateObject(self, cur_x, cur_y)
-            self.position = cur_x, cur_y
+            self.position = cur_x, cur_y # update position in object
             yield self.env.timeout(1)
-
-        # This is not the final function ofc, need to also consider the factor of other
-        # points being in the way, and physical distancing.
 
 class Community:
     """ A community in our model world, they are represented by boxes.
@@ -136,16 +143,19 @@ class Community:
 
         self.count = no_of_people
 
+        # initialise spatial hash table
         self.spatialhash = PersonSpatialHash(cell_size=3)
 
         self.initial_infected_percent = 0.05
         for person_id in range(no_of_people):
+            # randomly spawn person
             start_pos = (random.uniform(start_x, end_x), random.uniform(start_y, end_y))
             new_person = Person(person_id, start_pos, position, env, popular_places)
             if random_tf(self.initial_infected_percent):
+                # randomly infect that person
                 new_person.got_infected()
             self.population.append(new_person)
-            self.spatialhash.insertObject(new_person)
+            self.spatialhash.insertObject(new_person) # insert to spatial hash
         self.population_processes = []  # to store the SimPy processes for each person
         # ^ this could be dict
 
@@ -153,19 +163,22 @@ class Community:
         """Get positions of all people in the form of two separate x and y lists.
         This is a helper function for plotting.
         """
-        num_infecteds = []
-        total_infected = 0
+        num_infecteds = []  # to store number of people infected by each person
+        total_infected = 0  # to store number of infected people
         if nparray_to_fill is None:
-            data = np.empty((self.count, 3))
+            data = np.empty((self.count, 3))  # initialise data array
         else:
-            data = nparray_to_fill
+            data = nparray_to_fill  # use data array if given
         for index, person in enumerate(self.population):
-            data[index] = (person.position[0],
-                           person.position[1],
-                           infected_color if person.infected else normal_color)
+            data[index] = (person.position[0],  # x value
+                           person.position[1],  # y value
+                           infected_color if person.infected else normal_color) # color
             num_infecteds.append(person.num_infected)
             total_infected += int(person.infected)
+        # TODO: Probably wrong calculation
+        # calculate R value
         r_value = float(sum(num_infecteds))/total_infected
+        # calculate percent of infected people
         infected_percent = 100 * float(total_infected)/self.count
         return data, r_value, infected_percent
 
