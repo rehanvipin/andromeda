@@ -3,7 +3,7 @@ import random
 import simpy
 
 CLOSE_ENOUGH_THRESHOLD = 0.5
-WALK_SPEED = 0.5
+WALK_SPEED = 1.0
 
 def random_tf(probability):
     """Returns True probability% of times (has been tested)
@@ -30,6 +30,7 @@ class Person:
         self.infected = False
         self.time_infected = -1     # Invalid means not infected
         self.walk_range = 5
+        self.walk_speed = random.random() * WALK_SPEED
         self.walk_duration = 10 # max duration (in terms of simpy env steps) to walk for
         self.stop_duration = 10 # same as above, but for being in one place
         self.env = env # simpy environment
@@ -81,8 +82,8 @@ class Person:
 
         while not close_enough(cur_x, new_x) or not close_enough(cur_y, new_y):
             direction = (get_direction(cur_x, new_x), get_direction(cur_y, new_y))
-            cur_x += direction[0] * WALK_SPEED
-            cur_y += direction[1] * WALK_SPEED
+            cur_x += direction[0] * self.walk_speed
+            cur_y += direction[1] * self.walk_speed
             self.position = cur_x, cur_y
             yield self.env.timeout(1)
 
