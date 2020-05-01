@@ -3,6 +3,8 @@ import random
 import numpy as np
 import simpy
 
+from spatialhash import PersonSpatialHash
+
 CLOSE_ENOUGH_THRESHOLD = 0.5
 WALK_SPEED = 1.0
 
@@ -30,6 +32,9 @@ class Person:
         self.position = start_pos
         self.infected = False
         self.time_infected = -1     # Invalid means not infected
+        self.infect_range = 2
+        self.infect_probability = 0.05
+        self.num_infected = 0
         self.walk_range = 5
         self.walk_speed = random.random() * WALK_SPEED
         self.walk_duration = 10 # max duration (in terms of simpy env steps) to walk for
@@ -39,14 +44,21 @@ class Person:
         self.popular_places = popular_places
         self.popular_place_probability = 0.3
 
-    def activate(self):
+    def activate(self, spatialhash):
         """Activates an infinite loop of walking and stopping
         """
         while True:
-            yield self.env.process(self.wander())
+            yield self.env.process(self.wander(spatialhash))
             yield self.env.timeout(random.randrange(self.stop_duration))
 
-    def wander(self):
+    def got_infected(self):
+        if self.infected:
+            return False
+        self.infected = True
+        self.time_infected = self.env.now
+        return True
+
+    def wander(self, spatialhash):
         """ The random walk the particle will be doing till the end of the simulation.
             This doesn't have to be a class method, but will be convenient.
             The particle will wander in the boundaries.
@@ -80,11 +92,19 @@ class Person:
         def close_enough(current_value, target_value):
             if abs(current_value - target_value) < CLOSE_ENOUGH_THRESHOLD:
                 return True
+            return False
 
         while not close_enough(cur_x, new_x) or not close_enough(cur_y, new_y):
             direction = (get_direction(cur_x, new_x), get_direction(cur_y, new_y))
             cur_x += direction[0] * self.walk_speed
             cur_y += direction[1] * self.walk_speed
+            if self.infected:
+                nearby_people = spatialhash.search_nearby(self, self.infect_range)
+                # print("Nearby to {}:".format(self.id_), nearby_people)
+                for nearby_person in nearby_people:
+                    if random_tf(self.infect_probability):
+                        self.num_infected += (nearby_person.got_infected())
+            spatialhash.updateObject(self, cur_x, cur_y)
             self.position = cur_x, cur_y
             yield self.env.timeout(1)
 
@@ -116,24 +136,38 @@ class Community:
 
         self.count = no_of_people
 
+        self.spatialhash = PersonSpatialHash(cell_size=3)
+
+        self.initial_infected_percent = 0.05
         for person_id in range(no_of_people):
             start_pos = (random.uniform(start_x, end_x), random.uniform(start_y, end_y))
-            self.population.append(Person(person_id, start_pos, position, env, popular_places))
+            new_person = Person(person_id, start_pos, position, env, popular_places)
+            if random_tf(self.initial_infected_percent):
+                new_person.got_infected()
+            self.population.append(new_person)
+            self.spatialhash.insertObject(new_person)
         self.population_processes = []  # to store the SimPy processes for each person
         # ^ this could be dict
 
-
-    def get_all_positions_x_y(self, nparray_to_fill=None):
+    def get_all_positions_colors(self, normal_color, infected_color, nparray_to_fill=None):
         """Get positions of all people in the form of two separate x and y lists.
         This is a helper function for plotting.
         """
+        num_infecteds = []
+        total_infected = 0
         if nparray_to_fill is None:
-            data_xy = np.empty((self.count, 2))
+            data = np.empty((self.count, 3))
         else:
-            data_xy = nparray_to_fill
+            data = nparray_to_fill
         for index, person in enumerate(self.population):
-            data_xy[index] = person.position
-        return data_xy
+            data[index] = (person.position[0],
+                           person.position[1],
+                           infected_color if person.infected else normal_color)
+            num_infecteds.append(person.num_infected)
+            total_infected += int(person.infected)
+        r_value = float(sum(num_infecteds))/total_infected
+        infected_percent = 100 * float(total_infected)/self.count
+        return data, r_value, infected_percent
 
     def set_people_attribute(self, attr_name, value):
         """Sets an attribute for all people in the population"""
@@ -144,5 +178,5 @@ class Community:
         """Activates all the people in this community. This will not lock the thread.
         """
         for person in self.population:
-            self.population_processes.append(self.env.process(person.activate()))
+            self.population_processes.append(self.env.process(person.activate(self.spatialhash)))
         return self.population_processes
