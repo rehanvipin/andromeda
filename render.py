@@ -2,6 +2,7 @@
     Uses the values from the engine to describe the world.
     Still need to decide on the modules to be used.
 """
+import time
 import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -57,6 +58,16 @@ def render_community(steps, env,
     ax_slider_3 = plt.axes([0.25, 0.2, 0.65, 0.03], facecolor=axcolor)
     ax_left_1 = plt.axes([0.025, 0.5, 0.15, 0.10], facecolor=axcolor)
 
+
+    # For displaying framerate (doesn't work currently, can be reused for something else)
+    # ax_left_2 = plt.axes([0.05, 0.8, 0.2, 0.05])
+    # ax_left_2.get_xaxis().set_visible(False)
+    # ax_left_2.get_yaxis().set_visible(False)
+    # ax_left_2_bbox = ax_left_2.get_position(original=False).get_points()
+    # fps_text_x = (ax_left_2_bbox[0][0] + ax_left_2_bbox[0][1]) / 2.0
+    # fps_text_y = (ax_left_2_bbox[1][0] + ax_left_2_bbox[1][1]) / 2.0
+    # fps_text = ax_left_2.text(fps_text_x, fps_text_y, "FPS", horizontalalignment='center', verticalalignment='center')
+
     max_walk_range = round(math.sqrt((community.position[0][1]-community.position[0][0])**2
                                      + (community.position[1][1]-community.position[1][0])**2))
     initial_walk_range = max_walk_range / 2
@@ -81,8 +92,10 @@ def render_community(steps, env,
     num_people = len(community.population)
 
     # initialize the scatter plot
-    x, y = community.get_all_positions_x_y()
-    c = np.random.random((num_people)) # intialize random colors
+    data = community.get_all_positions_x_y()
+    x = data[:, 0]
+    y = data[:, 1]
+    c = np.full((num_people,), 0.5) # intialize color to green
     scat = ax.scatter(x, y, c=c, vmin=0, vmax=1,
                       cmap="jet", edgecolor="k")
     # plot popular places
@@ -97,31 +110,45 @@ def render_community(steps, env,
     def change_kwargs(orig_kwargs, **kwargs):
         orig_kwargs.update(kwargs)
 
+    frame_count = 0
+    total_frametime = 0
     def update(_):
         """Update the scatter plot."""
+        nonlocal total_frametime, frame_count, data
+
+        begin_time = time.perf_counter()
 
         # call the "before" function
         if before_callback:
             before_callback(*before_args, **before_kwargs)
 
-        data = community.get_all_positions_x_y()
-        # the scat.set_ functions need input in the form of numpy arrays
-        data = np.array(data)
+        data = community.get_all_positions_x_y(nparray_to_fill=data)
 
         # Set x and y data (input in the form of a 2D np array)
-        scat.set_offsets(data[:2, :].T)
+        scat.set_offsets(data)
+
         # Set sizes of dots (we might not need this)
         # self.scat.set_sizes(300 * abs(data[:, 2])**1.5 + 100)
+
         # Set colors of dots
-        scat.set_array(c)
+        # scat.set_array(c)
 
         # call the "after" function
         if after_callback:
             after_callback(*after_args, **after_args)
 
+        total_time = time.perf_counter() - begin_time
+        frametime = round(total_time*1000000, 2)
+        total_frametime += frametime
+        frame_count += 1
+        if frame_count == 100:
+            print("Average compute time in last {} frames: {:8.2f} microseconds".format(frame_count, total_frametime/frame_count))
+            frame_count = 0
+            total_frametime = 0
+
         # We need to return the updated artist for FuncAnimation to draw..
         # Note that it expects a sequence of artists, thus the trailing comma.
-        return (scat, )
+        return (scat,)
 
     anim = animation.FuncAnimation(fig, update, interval=interval,
                                    blit=True,

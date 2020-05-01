@@ -1,5 +1,6 @@
 import random
 
+import numpy as np
 import simpy
 
 CLOSE_ENOUGH_THRESHOLD = 0.5
@@ -113,6 +114,8 @@ class Community:
             popular_places = []
         self.popular_places = popular_places
 
+        self.count = no_of_people
+
         for person_id in range(no_of_people):
             start_pos = (random.uniform(start_x, end_x), random.uniform(start_y, end_y))
             self.population.append(Person(person_id, start_pos, position, env, popular_places))
@@ -120,16 +123,17 @@ class Community:
         # ^ this could be dict
 
 
-    def get_all_positions_x_y(self):
+    def get_all_positions_x_y(self, nparray_to_fill=None):
         """Get positions of all people in the form of two separate x and y lists.
         This is a helper function for plotting.
         """
-        x = []
-        y = []
-        for person in self.population:
-            x.append(person.position[0])
-            y.append(person.position[1])
-        return x, y
+        if nparray_to_fill is None:
+            data_xy = np.empty((self.count, 2))
+        else:
+            data_xy = nparray_to_fill
+        for index, person in enumerate(self.population):
+            data_xy[index] = person.position
+        return data_xy
 
     def set_people_attribute(self, attr_name, value):
         """Sets an attribute for all people in the population"""

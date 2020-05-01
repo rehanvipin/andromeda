@@ -16,7 +16,8 @@ def main():
     # simulating one (small) sample community for now
     boundaries = ((0, 100), (0, 100))  # boundaries for the sample community
 
-    num_popular_places = 4
+    num_people = 100
+    num_popular_places = 10
     popular_places = []
     for _ in range(num_popular_places):
         popular_places.append((random.randrange(boundaries[0][0], boundaries[0][1]),
@@ -24,7 +25,7 @@ def main():
 
     sample_community = world.Community(boundaries,
                                        env,
-                                       no_of_people=20,
+                                       no_of_people=num_people,
                                        popular_places=popular_places)
     sample_community.activate()
 
